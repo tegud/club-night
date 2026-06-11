@@ -1,0 +1,13 @@
+{
+  "name": "@club-night/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@club-night/shared": "*"
+  }
+}
