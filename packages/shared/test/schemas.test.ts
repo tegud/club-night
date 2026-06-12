@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { signupInputSchema } from '../src/schemas';
+import { signupInputSchema, createNightSchema, updateNightSchema } from '../src/schemas';
 
 const valid = {
   playerName: 'Ada',
@@ -38,5 +38,54 @@ describe('signupInputSchema', () => {
 
   it('rejects a note longer than 500 characters', () => {
     expect(() => signupInputSchema.parse({ ...valid, note: 'x'.repeat(501) })).toThrow();
+  });
+});
+
+describe('createNightSchema', () => {
+  const valid = {
+    title: 'Thursday Night',
+    eventDate: '2026-07-02T18:00:00.000Z',
+    signupDeadline: '2026-07-02T12:00:00.000Z',
+    offeredSystems: [{ systemKey: 'WARHAMMER_40K', prominent: true }],
+  };
+
+  it('accepts valid input', () => {
+    expect(createNightSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('rejects an empty title', () => {
+    expect(() => createNightSchema.parse({ ...valid, title: '' })).toThrow();
+  });
+
+  it('rejects a non-ISO eventDate', () => {
+    expect(() => createNightSchema.parse({ ...valid, eventDate: 'next thursday' })).toThrow();
+  });
+
+  it('rejects an empty offeredSystems list', () => {
+    expect(() => createNightSchema.parse({ ...valid, offeredSystems: [] })).toThrow();
+  });
+
+  it('rejects an unknown system key', () => {
+    expect(() =>
+      createNightSchema.parse({ ...valid, offeredSystems: [{ systemKey: 'CHESS', prominent: true }] }),
+    ).toThrow();
+  });
+});
+
+describe('updateNightSchema', () => {
+  it('accepts a partial update', () => {
+    expect(updateNightSchema.parse({ title: 'Renamed' })).toEqual({ title: 'Renamed' });
+  });
+
+  it('accepts a status change', () => {
+    expect(updateNightSchema.parse({ status: 'CANCELLED' })).toEqual({ status: 'CANCELLED' });
+  });
+
+  it('rejects an unknown status', () => {
+    expect(() => updateNightSchema.parse({ status: 'NOPE' })).toThrow();
+  });
+
+  it('rejects an empty offeredSystems array', () => {
+    expect(() => updateNightSchema.parse({ offeredSystems: [] })).toThrow();
   });
 });

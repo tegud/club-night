@@ -31,3 +31,15 @@ export class ValidationError extends HttpError {
     super(400, 'VALIDATION_ERROR', message);
   }
 }
+
+export class UnauthorizedError extends HttpError {
+  constructor(message = 'Unauthorized') {
+    super(401, 'UNAUTHORIZED', message);
+  }
+}
+
+export class ForbiddenError extends HttpError {
+  constructor(message = 'Forbidden') {
+    super(403, 'FORBIDDEN', message);
+  }
+}

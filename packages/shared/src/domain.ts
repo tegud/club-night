@@ -72,3 +72,11 @@ export interface GameNight {
   /** userId of the organizer who created the night. */
   createdBy: string;
 }
+
+export interface Membership {
+  clubId: string;
+  userId: string;
+  role: MemberRole;
+  displayName: string;
+  email: string;
+}

@@ -10,6 +10,9 @@ import {
   signupSkPrefix,
   signupEmailGsi3Pk,
   userGsi2Pk,
+  membershipSk,
+  authCodePk,
+  authCodeSk,
 } from '../../src/db/keys';
 
 describe('key builders', () => {
@@ -33,5 +36,14 @@ describe('key builders', () => {
 
   it('builds the user GSI2 partition key', () => {
     expect(userGsi2Pk('u1')).toBe('USER#u1');
+  });
+
+  it('builds the membership sort key', () => {
+    expect(membershipSk('u1')).toBe('MEMBER#u1');
+  });
+
+  it('builds auth-code keys', () => {
+    expect(authCodePk('club-1', 'ada@example.com')).toBe('AUTHCODE#club-1#ada@example.com');
+    expect(authCodeSk()).toBe('#AUTHCODE');
   });
 });

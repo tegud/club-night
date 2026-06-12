@@ -1,4 +1,4 @@
-import type { Club, GameNight } from '@club-night/shared';
+import type { Club, GameNight, Membership } from '@club-night/shared';
 
 export function sampleClub(overrides: Partial<Club> = {}): Club {
   return {
@@ -27,6 +27,17 @@ export function sampleNight(overrides: Partial<GameNight> = {}): GameNight {
       { systemKey: 'BLOOD_BOWL', prominent: false },
     ],
     createdBy: 'user-1',
+    ...overrides,
+  };
+}
+
+export function sampleMembership(overrides: Partial<Membership> = {}): Membership {
+  return {
+    clubId: 'club-1',
+    userId: 'user-1',
+    role: 'OWNER',
+    displayName: 'Olivia Organizer',
+    email: 'olivia@example.com',
     ...overrides,
   };
 }
