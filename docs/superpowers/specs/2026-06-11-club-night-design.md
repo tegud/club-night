@@ -111,9 +111,16 @@ The core entity is a generic **Event** so future scenarios slot in without migra
 
 ### Game night lifecycle (status)
 
-`DRAFT` → `OPEN` (accepting signups) → `CLOSED` (deadline passed, pairing in progress) →
-`PAIRED` (pairings published) → `COMPLETED`. `CANCELLED` is reachable from any pre-paired
-state.
+`OPEN` (accepting signups) → `CLOSED` (signups closed; pairings generated and under
+organizer review — players NOT yet notified) → `PAIRED` (pairings published; players
+emailed) → `COMPLETED`. `CANCELLED` is reachable from any pre-paired state. (`DRAFT` is
+reserved but unused in the MVP — nights are created `OPEN`.)
+
+**Two-phase pairing:** generating pairings (manually, or automatically at the
+`signupDeadline` via the scheduled handler) transitions `OPEN → CLOSED`, which closes
+signups and notifies the **organizer** that pairings are ready to review. The organizer
+resolves any odd-one-out players, then **publishes** (`CLOSED → PAIRED`), which emails the
+matched players. Players are emailed only at publish, never at generate.
 
 ## DynamoDB single-table design
 

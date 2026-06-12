@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Pairing } from '@club-night/shared';
 import { resetTable } from '../setup/table';
-import { putPairing, listPairingsByNight, deletePairingsByNight } from '../../src/repositories/pairings';
+import { putPairing, listPairingsByNight, deletePairingsByNight, deletePairing } from '../../src/repositories/pairings';
 
 beforeEach(async () => {
   await resetTable();
@@ -42,5 +42,14 @@ describe('pairings repository', () => {
     await putPairing(pairing({ pairingId: 'p2', systemKey: 'BLOOD_BOWL' }));
     await deletePairingsByNight('night-1');
     expect(await listPairingsByNight('night-1')).toEqual([]);
+  });
+
+  it('deletes a single pairing by key', async () => {
+    const p1 = pairing({ pairingId: 'p1' });
+    await putPairing(p1);
+    await putPairing(pairing({ pairingId: 'p2', systemKey: 'BLOOD_BOWL' }));
+    await deletePairing(p1);
+    const list = await listPairingsByNight('night-1');
+    expect(list.map((p) => p.pairingId)).toEqual(['p2']);
   });
 });

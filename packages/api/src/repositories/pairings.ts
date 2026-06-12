@@ -36,6 +36,15 @@ export async function listPairingsByNight(nightId: string): Promise<Pairing[]> {
   return items.map(fromItem);
 }
 
+export async function deletePairing(pairing: Pairing): Promise<void> {
+  await getDocClient().send(
+    new DeleteCommand({
+      TableName: getTableName(),
+      Key: { PK: pairingPk(pairing.nightId), SK: pairingSk(pairing.systemKey, pairing.pairingId) },
+    }),
+  );
+}
+
 export async function deletePairingsByNight(nightId: string): Promise<void> {
   const items = await queryAll({
     TableName: getTableName(),

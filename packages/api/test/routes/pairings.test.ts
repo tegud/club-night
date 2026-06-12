@@ -2,10 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resetTable } from '../setup/table';
 import { sampleClub, sampleNight, sampleMembership } from '../fixtures';
 import { putClub } from '../../src/repositories/clubs';
-import { putNight } from '../../src/repositories/nights';
+import { getNight, putNight } from '../../src/repositories/nights';
 import { putMembership } from '../../src/repositories/memberships';
 import { upsertSignup } from '../../src/repositories/signups';
+import { putPairing } from '../../src/repositories/pairings';
 import { setCognitoVerifier } from '../../src/auth/cognito';
+import { setEmailSender } from '../../src/email/provider';
+import { FakeEmailSender } from '../fakes/email';
 import { createApp } from '../../src/app';
 
 const ORGANIZER_TOKEN = 'organizer-token';
@@ -82,5 +85,86 @@ describe('GET /clubs/:slug/nights/:nightId/pairings', () => {
 
   it('rejects an anonymous caller with 401', async () => {
     expect((await view()).status).toBe(401);
+  });
+});
+
+function publish(token?: string) {
+  return createApp().request('/clubs/red-dice/nights/night-1/pairings/publish', {
+    method: 'POST',
+    headers: { ...(token ? { authorization: `Bearer ${token}` } : {}) },
+  });
+}
+
+describe('POST /clubs/:slug/nights/:nightId/pairings/publish', () => {
+  afterEach(() => setEmailSender(undefined));
+
+  it('publishes pairings and marks the night PAIRED for an organizer', async () => {
+    const email = new FakeEmailSender();
+    setEmailSender(email);
+    await generate(ORGANIZER_TOKEN); // 1 MATCHED pairing from the 2 seeded 40k signups
+    const res = await publish(ORGANIZER_TOKEN);
+    expect(res.status).toBe(200);
+    expect((await res.json() as any).night.status).toBe('PAIRED');
+    expect((await getNight('club-1', 'night-1'))!.status).toBe('PAIRED');
+    expect(email.sent).toHaveLength(2);
+  });
+
+  it('rejects an anonymous caller with 401', async () => {
+    expect((await publish()).status).toBe(401);
+  });
+
+  it('rejects a non-organizer with 403', async () => {
+    setCognitoVerifier({ verify: async () => ({ sub: 'stranger', email: 's@x.com' }) });
+    expect((await publish(ORGANIZER_TOKEN)).status).toBe(403);
+  });
+});
+
+describe('POST .../pairings/generate when already PAIRED', () => {
+  it('rejects re-generation of a published night with 409', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'PAIRED' }));
+    const res = await generate(ORGANIZER_TOKEN);
+    expect(res.status).toBe(409);
+  });
+});
+
+function resolve(pairingId: string, body: unknown, token?: string) {
+  return createApp().request(`/clubs/red-dice/nights/night-1/pairings/${pairingId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+
+describe('PATCH /clubs/:slug/nights/:nightId/pairings/:pairingId', () => {
+  beforeEach(async () => {
+    await putPairing({ pairingId: 'p1', nightId: 'night-1', clubId: 'club-1', systemKey: 'WARHAMMER_40K', players: [{ signupId: 's1', playerName: 'Ada' }], status: 'NEEDS_RESOLUTION' });
+    await putPairing({ pairingId: 'p2', nightId: 'night-1', clubId: 'club-1', systemKey: 'BLOOD_BOWL', players: [{ signupId: 's2', playerName: 'Bob' }], status: 'NEEDS_RESOLUTION' });
+  });
+
+  it('merges two singles for an organizer', async () => {
+    const res = await resolve('p1', { opponentSignupId: 's2' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(200);
+    expect((await res.json() as any).pairing.status).toBe('MATCHED');
+  });
+
+  it('rejects a bad opponent with 400', async () => {
+    const res = await resolve('p1', { opponentSignupId: 'nobody' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an anonymous caller with 401', async () => {
+    expect((await resolve('p1', { opponentSignupId: 's2' })).status).toBe(401);
+  });
+
+  it('rejects a non-organizer with 403', async () => {
+    setCognitoVerifier({ verify: async () => ({ sub: 'stranger', email: 's@x.com' }) });
+    const res = await resolve('p1', { opponentSignupId: 's2' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects resolving on an already-PAIRED night with 409', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'PAIRED' }));
+    const res = await resolve('p1', { opponentSignupId: 's2' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(409);
   });
 });
