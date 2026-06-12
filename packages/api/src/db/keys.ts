@@ -1,0 +1,14 @@
+export const clubPk = (clubId: string): string => `CLUB#${clubId}`;
+export const clubMetaSk = (): string => '#META';
+export const clubSlugGsi1Pk = (slug: string): string => `CLUBSLUG#${slug}`;
+
+export const nightSk = (nightId: string): string => `NIGHT#${nightId}`;
+export const nightSkPrefix = (): string => 'NIGHT#';
+
+export const signupPk = (nightId: string): string => `NIGHT#${nightId}`;
+export const signupSk = (signupId: string): string => `SIGNUP#${signupId}`;
+export const signupSkPrefix = (): string => 'SIGNUP#';
+export const signupEmailGsi3Pk = (nightId: string, emailLower: string): string =>
+  `NIGHT#${nightId}#EMAIL#${emailLower}`;
+
+export const userGsi2Pk = (userId: string): string => `USER#${userId}`;

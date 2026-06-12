@@ -42,3 +42,33 @@ export interface Signup {
   status: SignupStatus;
   requestedOpponentSignupId?: string;
 }
+
+export interface Club {
+  clubId: string;
+  slug: string;
+  name: string;
+  logoUrl: string;
+  primaryColour: string;
+  enabledSystems: GameSystemKey[];
+}
+
+export interface OfferedSystem {
+  systemKey: GameSystemKey;
+  prominent: boolean;
+}
+
+export interface GameNight {
+  nightId: string;
+  clubId: string;
+  title: string;
+  /** ISO 8601 timestamp for when the night happens. */
+  eventDate: string;
+  /** ISO 8601 timestamp after which signups close. */
+  signupDeadline: string;
+  status: NightStatus;
+  eventType: EventType;
+  pairingStrategy: PairingStrategy;
+  offeredSystems: OfferedSystem[];
+  /** userId of the organizer who created the night. */
+  createdBy: string;
+}

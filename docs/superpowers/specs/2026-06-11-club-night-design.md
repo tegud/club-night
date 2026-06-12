@@ -125,7 +125,7 @@ tenant scoping. IDs use ULIDs (time-sortable) except where a natural key is bett
 | Club        | `CLUB#<clubId>`          | `#META`                         | `slug`, `name`, `logoUrl`, `primaryColour`, `enabledSystems`. **GSI1**: `GSI1PK=CLUBSLUG#<slug>` → slug lookup |
 | Membership  | `CLUB#<clubId>`          | `MEMBER#<userId>`               | `role` (OWNER/ORGANIZER/PLAYER), `displayName`, `email`. **GSI2**: `GSI2PK=USER#<userId>` → a user's clubs |
 | Game night  | `CLUB#<clubId>`          | `NIGHT#<nightId>`               | `title`, `eventDate`, `signupDeadline`, `status`, `eventType`, `pairingStrategy`, `offeredSystems` (each `{ systemKey, prominent }`), `createdBy`. nightId = ULID → range-query a club's nights by time |
-| Signup      | `NIGHT#<nightId>`        | `SIGNUP#<signupId>`             | `clubId`, `playerName`, `email`, `userId?`, `systemKey`, `note?`, `status`, `requestedOpponentSignupId?` (reserved). **GSI3**: `GSI3PK=NIGHT#<nightId>#EMAIL#<emailLower>` → a guest's signups for a night. **GSI2**: `GSI2PK=USER#<userId>`, `GSI2SK=SIGNUP#<nightId>` → logged-in player history (the `SIGNUP#` vs `CLUB#` SK prefix separates a user's signups from their memberships in the same partition) |
+| Signup      | `NIGHT#<nightId>`        | `SIGNUP#<signupId>`             | `clubId`, `playerName`, `email`, `userId?`, `systemKey`, `note?`, `status`, `requestedOpponentSignupId?` (reserved). **GSI3**: `GSI3PK=NIGHT#<nightId>#EMAIL#<emailLower>` → a guest's signups for a night. **GSI2**: `GSI2PK=USER#<userId>`, `GSI2SK=SIGNUP#<signupId>` → logged-in player history, sorted by signup creation time (the `SIGNUP#` vs `CLUB#` SK prefix separates a user's signups from their memberships in the same partition) |
 | Pairing     | `NIGHT#<nightId>`        | `PAIRING#<systemKey>#<pairingId>` | `clubId`, `systemKey`, `players` (1 or 2 `{ signupId, playerName }`), `status` (`PUBLISHED` / `NEEDS_RESOLUTION`). An odd-one-out is a pairing with a single player and `status=NEEDS_RESOLUTION` |
 | Auth code   | `AUTHCODE#<codeHash>`    | `#META`                         | `email`, `clubId`, `purpose`, `createdAt`, `ttl` (DynamoDB TTL). Single-use |
 
@@ -163,29 +163,33 @@ tenant scoping. IDs use ULIDs (time-sortable) except where a natural key is bett
 
 ## API surface (representative)
 
+All routes are **club-scoped under `/clubs/:slug/...`**, matching path-based tenancy.
+Items are partitioned by `clubId`, so a night/signup/pairing cannot be located by its own
+id alone — the club slug is always part of the path.
+
 Public / branding:
 - `GET /clubs/:slug` — branding + enabled systems.
 - `GET /clubs/:slug/nights` — upcoming nights.
-- `GET /nights/:nightId` — night detail + offered systems.
+- `GET /clubs/:slug/nights/:nightId` — night detail + offered systems.
 
 Guest auth:
 - `POST /clubs/:slug/guest/request-code` — `{ email }`.
 - `POST /clubs/:slug/guest/verify-code` — `{ email, code }` → guest-session JWT.
 
 Signups (guest session or Cognito principal):
-- `POST /nights/:nightId/signups` — `{ playerName, email, systemKey, note? }`.
-- `GET  /signups/:signupId`
-- `PATCH /signups/:signupId` — change system / note.
-- `DELETE /signups/:signupId` — withdraw.
+- `POST /clubs/:slug/nights/:nightId/signups` — `{ playerName, email, systemKey, note? }`.
+- `GET  /clubs/:slug/nights/:nightId/signups/:signupId`
+- `PATCH /clubs/:slug/nights/:nightId/signups/:signupId` — change system / note.
+- `DELETE /clubs/:slug/nights/:nightId/signups/:signupId` — withdraw.
 
 Organizer (Cognito + OWNER/ORGANIZER membership):
-- `POST /clubs/:clubId/nights` — create a night.
-- `PATCH /nights/:nightId` — edit / cancel.
-- `GET  /nights/:nightId/signups` — all signups.
-- `GET  /nights/:nightId/pairings` — current pairings + unresolved.
-- `POST /nights/:nightId/pairings/generate` — manual (re-)roll override.
-- `PATCH /pairings/:pairingId` — manually pair / resolve an odd-one-out.
-- `POST /nights/:nightId/pairings/publish` — publish + notify (idempotent).
+- `POST /clubs/:slug/nights` — create a night.
+- `PATCH /clubs/:slug/nights/:nightId` — edit / cancel.
+- `GET  /clubs/:slug/nights/:nightId/signups` — all signups.
+- `GET  /clubs/:slug/nights/:nightId/pairings` — current pairings + unresolved.
+- `POST /clubs/:slug/nights/:nightId/pairings/generate` — manual (re-)roll override.
+- `PATCH /clubs/:slug/nights/:nightId/pairings/:pairingId` — manually pair / resolve an odd-one-out.
+- `POST /clubs/:slug/nights/:nightId/pairings/publish` — publish + notify (idempotent).
 
 Internal:
 - The EventBridge Scheduler target invokes the pairing routine for a night at its
