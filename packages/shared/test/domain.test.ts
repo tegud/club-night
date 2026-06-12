@@ -25,7 +25,7 @@ describe('domain constants', () => {
   });
 
   it('defines pairing statuses', () => {
-    expect(PAIRING_STATUSES).toEqual(['PUBLISHED', 'NEEDS_RESOLUTION']);
+    expect(PAIRING_STATUSES).toEqual(['MATCHED', 'NEEDS_RESOLUTION']);
   });
 
   it('defines member roles', () => {

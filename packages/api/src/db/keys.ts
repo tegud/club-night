@@ -18,3 +18,8 @@ export const authCodePk = (clubId: string, emailLower: string): string =>
 export const authCodeSk = (): string => '#AUTHCODE';
 
 export const membershipSk = (userId: string): string => `MEMBER#${userId}`;
+
+export const pairingPk = (nightId: string): string => `NIGHT#${nightId}`;
+export const pairingSk = (systemKey: string, pairingId: string): string =>
+  `PAIRING#${systemKey}#${pairingId}`;
+export const pairingSkPrefix = (): string => 'PAIRING#';

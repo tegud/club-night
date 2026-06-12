@@ -13,6 +13,9 @@ import {
   membershipSk,
   authCodePk,
   authCodeSk,
+  pairingPk,
+  pairingSk,
+  pairingSkPrefix,
 } from '../../src/db/keys';
 
 describe('key builders', () => {
@@ -45,5 +48,11 @@ describe('key builders', () => {
   it('builds auth-code keys', () => {
     expect(authCodePk('club-1', 'ada@example.com')).toBe('AUTHCODE#club-1#ada@example.com');
     expect(authCodeSk()).toBe('#AUTHCODE');
+  });
+
+  it('builds pairing keys', () => {
+    expect(pairingPk('n1')).toBe('NIGHT#n1');
+    expect(pairingSk('WARHAMMER_40K', 'p1')).toBe('PAIRING#WARHAMMER_40K#p1');
+    expect(pairingSkPrefix()).toBe('PAIRING#');
   });
 });

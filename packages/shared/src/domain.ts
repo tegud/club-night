@@ -22,7 +22,7 @@ export type MemberRole = (typeof MEMBER_ROLES)[number];
 export const SIGNUP_STATUSES = ['CONFIRMED', 'CANCELLED'] as const;
 export type SignupStatus = (typeof SIGNUP_STATUSES)[number];
 
-export const PAIRING_STATUSES = ['PUBLISHED', 'NEEDS_RESOLUTION'] as const;
+export const PAIRING_STATUSES = ['MATCHED', 'NEEDS_RESOLUTION'] as const;
 export type PairingStatus = (typeof PAIRING_STATUSES)[number];
 
 /**
@@ -79,4 +79,19 @@ export interface Membership {
   role: MemberRole;
   displayName: string;
   email: string;
+}
+
+export interface PairingPlayer {
+  signupId: string;
+  playerName: string;
+}
+
+export interface Pairing {
+  pairingId: string;
+  nightId: string;
+  clubId: string;
+  systemKey: GameSystemKey;
+  /** Two players for a MATCHED pairing; one for a NEEDS_RESOLUTION (odd) pairing. */
+  players: PairingPlayer[];
+  status: PairingStatus;
 }
