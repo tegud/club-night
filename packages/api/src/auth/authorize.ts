@@ -1,4 +1,4 @@
-import type { Membership } from '@club-night/shared';
+import type { Club, Membership, Signup } from '@club-night/shared';
 import type { Principal } from './principal';
 import { getMembership } from '../repositories/memberships';
 import { ForbiddenError, UnauthorizedError } from '../http/errors';
@@ -20,4 +20,28 @@ export async function requireOrganizer(
     throw new ForbiddenError('You are not an organizer of this club');
   }
   return membership;
+}
+
+/**
+ * Require that the principal may manage this signup: the guest who owns it
+ * (email + club match), the logged-in player who owns it (userId match), or an
+ * organizer of the club. Throws Unauthorized (no principal) or Forbidden.
+ */
+export async function requireSignupAccess(
+  principal: Principal | undefined,
+  club: Club,
+  signup: Signup,
+): Promise<void> {
+  if (!principal) throw new UnauthorizedError('Sign-in required');
+
+  if (principal.kind === 'guest') {
+    // Guest sessions are club-scoped (email + clubId), not night-scoped: a guest may
+    // manage their own signups on any night within the club they verified.
+    if (principal.clubId === club.clubId && principal.email === signup.email) return;
+    throw new ForbiddenError('You can only manage your own signup');
+  }
+
+  // cognito: owner by userId, otherwise must be an organizer of the club
+  if (signup.userId && signup.userId === principal.userId) return;
+  await requireOrganizer(principal, club.clubId);
 }

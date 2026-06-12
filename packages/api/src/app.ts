@@ -6,6 +6,7 @@ import { nightRoutes } from './routes/nights';
 import { signupRoutes } from './routes/signups';
 import { guestRoutes } from './routes/guest';
 import { organizerNightRoutes } from './routes/organizer-nights';
+import { signupManagementRoutes } from './routes/signup-management';
 
 export function createApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -19,6 +20,7 @@ export function createApp(): Hono<AppEnv> {
   app.route('/', signupRoutes);
   app.route('/', guestRoutes);
   app.route('/', organizerNightRoutes);
+  app.route('/', signupManagementRoutes);
 
   return app;
 }

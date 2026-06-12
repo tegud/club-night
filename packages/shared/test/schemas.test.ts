@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { signupInputSchema, createNightSchema, updateNightSchema } from '../src/schemas';
+import { signupInputSchema, createNightSchema, updateNightSchema, updateSignupSchema } from '../src/schemas';
 
 const valid = {
   playerName: 'Ada',
@@ -87,5 +87,23 @@ describe('updateNightSchema', () => {
 
   it('rejects an empty offeredSystems array', () => {
     expect(() => updateNightSchema.parse({ offeredSystems: [] })).toThrow();
+  });
+});
+
+describe('updateSignupSchema', () => {
+  it('accepts a system change', () => {
+    expect(updateSignupSchema.parse({ systemKey: 'BLOOD_BOWL' })).toEqual({ systemKey: 'BLOOD_BOWL' });
+  });
+
+  it('accepts a note change', () => {
+    expect(updateSignupSchema.parse({ note: 'Bringing Orks' })).toEqual({ note: 'Bringing Orks' });
+  });
+
+  it('accepts an empty (no-op) update', () => {
+    expect(updateSignupSchema.parse({})).toEqual({});
+  });
+
+  it('rejects an unknown system', () => {
+    expect(() => updateSignupSchema.parse({ systemKey: 'CHESS' })).toThrow();
   });
 });

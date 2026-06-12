@@ -1,4 +1,4 @@
-import type { Club, GameNight, Membership } from '@club-night/shared';
+import type { Club, GameNight, Membership, Signup } from '@club-night/shared';
 
 export function sampleClub(overrides: Partial<Club> = {}): Club {
   return {
@@ -38,6 +38,19 @@ export function sampleMembership(overrides: Partial<Membership> = {}): Membershi
     role: 'OWNER',
     displayName: 'Olivia Organizer',
     email: 'olivia@example.com',
+    ...overrides,
+  };
+}
+
+export function sampleSignup(overrides: Partial<Signup> = {}): Signup {
+  return {
+    signupId: 'signup-1',
+    nightId: 'night-1',
+    clubId: 'club-1',
+    playerName: 'Ada',
+    email: 'ada@example.com',
+    systemKey: 'WARHAMMER_40K',
+    status: 'CONFIRMED',
     ...overrides,
   };
 }

@@ -5,6 +5,7 @@ import {
   getSignup,
   listSignupsByNight,
   findSignupByEmail,
+  putSignup,
 } from '../../src/repositories/signups';
 
 beforeEach(async () => {
@@ -62,5 +63,23 @@ describe('signups repository', () => {
     expect(signup.userId).toBeUndefined();
     const fetched = await getSignup('night-1', signup.signupId);
     expect(fetched!.userId).toBeUndefined();
+  });
+
+  it('putSignup overwrites an existing signup by id', async () => {
+    const created = await upsertSignup(base);
+    await putSignup({ ...created, playerName: 'Ada Lovelace', systemKey: 'BLOOD_BOWL' });
+    const fetched = await getSignup('night-1', created.signupId);
+    expect(fetched!.playerName).toBe('Ada Lovelace');
+    expect(fetched!.systemKey).toBe('BLOOD_BOWL');
+    expect(fetched!.signupId).toBe(created.signupId);
+  });
+
+  it('reactivates a cancelled signup on re-signup with the same email', async () => {
+    const created = await upsertSignup(base);
+    await putSignup({ ...created, status: 'CANCELLED' });
+    const reactivated = await upsertSignup(base);
+    expect(reactivated.signupId).toBe(created.signupId);
+    expect(reactivated.status).toBe('CONFIRMED');
+    expect(await listSignupsByNight('night-1')).toHaveLength(1);
   });
 });

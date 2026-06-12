@@ -1,14 +1,24 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resetTable } from '../setup/table';
 import { sampleClub, sampleNight } from '../fixtures';
 import { putClub } from '../../src/repositories/clubs';
 import { putNight } from '../../src/repositories/nights';
 import { listSignupsByNight } from '../../src/repositories/signups';
 import { createApp } from '../../src/app';
+import { setEmailSender } from '../../src/email/provider';
+import { FakeEmailSender } from '../fakes/email';
+
+let email: FakeEmailSender;
 
 beforeEach(async () => {
   await resetTable();
   await putClub(sampleClub());
+  email = new FakeEmailSender();
+  setEmailSender(email);
+});
+
+afterEach(() => {
+  setEmailSender(undefined);
 });
 
 function post(body: unknown) {
@@ -57,5 +67,21 @@ describe('POST /clubs/:slug/nights/:nightId/signups', () => {
     const res = await post({ ...validBody, systemKey: 'AGE_OF_SIGMAR' });
     expect(res.status).toBe(400);
     expect(((await res.json()) as any).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('emails a confirmation to the player on signup', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'OPEN' }));
+    await post(validBody);
+    expect(email.sent).toHaveLength(1);
+    expect(email.sent[0]!.to).toBe('ada@example.com');
+    expect(email.sent[0]!.subject).toContain('Thursday Night Gaming');
+  });
+
+  it('still succeeds (201) when the confirmation email fails', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'OPEN' }));
+    setEmailSender({ send: async () => { throw new Error('SES down'); } });
+    const res = await post(validBody);
+    expect(res.status).toBe(201);
+    expect(await listSignupsByNight('night-1')).toHaveLength(1);
   });
 });

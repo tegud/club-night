@@ -10,7 +10,9 @@ describe('guest session JWT', () => {
 
   it('returns null for a tampered token', async () => {
     const token = await issueGuestSession({ email: 'ada@example.com', clubId: 'club-1' });
-    const tampered = token.slice(0, -2) + (token.endsWith('a') ? 'bb' : 'aa');
+    const [header, payload, signature] = token.split('.');
+    // Corrupt the payload segment — the signature can no longer match.
+    const tampered = `${header}.${payload}X.${signature}`;
     expect(await verifyGuestSession(tampered)).toBeNull();
   });
 

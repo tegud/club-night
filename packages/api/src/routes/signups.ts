@@ -4,6 +4,7 @@ import { requireClubBySlug, requireNight } from './context';
 import { upsertSignup } from '../repositories/signups';
 import { ConflictError, ValidationError } from '../http/errors';
 import { parseOrThrow } from '../http/validate';
+import { getEmailSender } from '../email/provider';
 
 export const signupRoutes = new Hono();
 
@@ -29,6 +30,17 @@ signupRoutes.post('/clubs/:slug/nights/:nightId/signups', async (c) => {
     systemKey: input.systemKey,
     ...(input.note !== undefined ? { note: input.note } : {}),
   });
+
+  try {
+    await getEmailSender().send({
+      to: signup.email,
+      subject: `You're signed up for ${night.title}`,
+      text: `Hi ${signup.playerName}, you're confirmed to play ${signup.systemKey} at ${night.title}. To change or withdraw your signup, return to the club page and request a sign-in code.`,
+    });
+  } catch (err) {
+    // Email is best-effort: a signup must not fail because confirmation didn't send.
+    console.error('Signup confirmation email failed', err);
+  }
 
   return c.json({ signup }, 201);
 });

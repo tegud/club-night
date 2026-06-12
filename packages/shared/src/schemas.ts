@@ -32,3 +32,9 @@ export const updateNightSchema = z.object({
   status: z.enum(NIGHT_STATUSES).optional(),
 });
 export type UpdateNightInput = z.infer<typeof updateNightSchema>;
+
+export const updateSignupSchema = z.object({
+  systemKey: z.enum(GAME_SYSTEM_KEYS).optional(),
+  note: z.string().trim().max(500).optional(),
+});
+export type UpdateSignupInput = z.infer<typeof updateSignupSchema>;

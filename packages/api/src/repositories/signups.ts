@@ -88,8 +88,12 @@ export async function upsertSignup(input: CreateSignupInput): Promise<Signup> {
     ...(input.note !== undefined ? { note: input.note } : {}),
     ...(input.userId !== undefined ? { userId: input.userId } : {}),
   };
-  await getDocClient().send(new PutCommand({ TableName: getTableName(), Item: toItem(signup) }));
+  await putSignup(signup);
   return signup;
+}
+
+export async function putSignup(signup: Signup): Promise<void> {
+  await getDocClient().send(new PutCommand({ TableName: getTableName(), Item: toItem(signup) }));
 }
 
 export async function getSignup(nightId: string, signupId: string): Promise<Signup | null> {
@@ -99,6 +103,8 @@ export async function getSignup(nightId: string, signupId: string): Promise<Sign
   return res.Item ? fromItem(res.Item) : null;
 }
 
+/** Lists ALL signups for a night, including CANCELLED ones. Callers that need only
+ *  active signups (e.g. pairing) must filter by status === 'CONFIRMED'. */
 export async function listSignupsByNight(nightId: string): Promise<Signup[]> {
   const items = await queryAll({
     TableName: getTableName(),
