@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config';
 import { getToken, setToken } from '../auth/token';
-import type { ClubBranding, NightResponse, NightsResponse, ApiErrorBody } from './types';
-import type { Signup, SignupInput, UpdateSignupInput, CreateNightInput, UpdateNightInput, GameNight } from '@club-night/shared';
+import type { ClubBranding, NightResponse, NightsResponse, ApiErrorBody, PairingsResponse, PairingResponse, PublishResponse } from './types';
+import type { Signup, SignupInput, UpdateSignupInput, CreateNightInput, UpdateNightInput, GameNight, Pairing } from '@club-night/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -105,5 +105,23 @@ export const apiClient = {
       `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/signups`,
     );
     return res.signups;
+  },
+  async listPairings(slug: string, nightId: string): Promise<Pairing[]> {
+    const res = await request<PairingsResponse>(`/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/pairings`);
+    return res.pairings;
+  },
+  async generatePairings(slug: string, nightId: string): Promise<Pairing[]> {
+    const res = await request<PairingsResponse>(`/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/pairings/generate`, { method: 'POST' });
+    return res.pairings;
+  },
+  async resolvePairing(slug: string, nightId: string, pairingId: string, opponentSignupId: string): Promise<Pairing> {
+    const res = await request<PairingResponse>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/pairings/${encodeURIComponent(pairingId)}`,
+      { method: 'PATCH', body: JSON.stringify({ opponentSignupId }) },
+    );
+    return res.pairing;
+  },
+  async publishPairings(slug: string, nightId: string): Promise<PublishResponse> {
+    return request<PublishResponse>(`/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/pairings/publish`, { method: 'POST' });
   },
 };

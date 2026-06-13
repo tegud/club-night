@@ -133,4 +133,57 @@ describe('apiClient', () => {
     expect(signups).toHaveLength(1);
     expect(fetchMock.mock.calls[0]![0]).toContain('/clubs/red-dice/nights/n1/signups');
   });
+
+  describe('pairings', () => {
+    const samplePairing = {
+      pairingId: 'p1',
+      nightId: 'n1',
+      clubId: 'c1',
+      systemKey: 'WARHAMMER_40K',
+      players: [{ signupId: 's1', playerName: 'Ada' }, { signupId: 's2', playerName: 'Ben' }],
+      status: 'MATCHED',
+    };
+
+    it('listPairings GETs the pairings endpoint and returns the unwrapped array', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ pairings: [samplePairing] }));
+      const pairings = await apiClient.listPairings('red-dice', 'n1');
+      expect(pairings).toHaveLength(1);
+      expect(pairings[0]!.pairingId).toBe('p1');
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toContain('/clubs/red-dice/nights/n1/pairings');
+      expect((init as RequestInit).method).toBeUndefined();
+    });
+
+    it('generatePairings POSTs to pairings/generate and returns the unwrapped array', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ pairings: [samplePairing] }, 201));
+      const pairings = await apiClient.generatePairings('red-dice', 'n1');
+      expect(pairings).toHaveLength(1);
+      expect(pairings[0]!.pairingId).toBe('p1');
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toContain('/clubs/red-dice/nights/n1/pairings/generate');
+      expect((init as RequestInit).method).toBe('POST');
+    });
+
+    it('resolvePairing PATCHes the pairing and returns the unwrapped pairing', async () => {
+      const resolved = { ...samplePairing, status: 'MATCHED' };
+      fetchMock.mockResolvedValueOnce(jsonResponse({ pairing: resolved }));
+      const pairing = await apiClient.resolvePairing('red-dice', 'n1', 'p1', 'sig9');
+      expect(pairing.pairingId).toBe('p1');
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toContain('/clubs/red-dice/nights/n1/pairings/p1');
+      expect((init as RequestInit).method).toBe('PATCH');
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({ opponentSignupId: 'sig9' });
+    });
+
+    it('publishPairings POSTs to pairings/publish and returns night + pairings', async () => {
+      const fakeNight = { nightId: 'n1', status: 'PAIRED' };
+      fetchMock.mockResolvedValueOnce(jsonResponse({ night: fakeNight, pairings: [samplePairing] }));
+      const result = await apiClient.publishPairings('red-dice', 'n1');
+      expect(result.night.nightId).toBe('n1');
+      expect(result.pairings).toHaveLength(1);
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toContain('/clubs/red-dice/nights/n1/pairings/publish');
+      expect((init as RequestInit).method).toBe('POST');
+    });
+  });
 });

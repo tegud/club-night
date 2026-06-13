@@ -16,3 +16,7 @@ export function useNight(slug: string, nightId: string) {
 export function useMySignup(slug: string, nightId: string, enabled: boolean) {
   return useQuery({ queryKey: ['my-signup', slug, nightId], queryFn: () => apiClient.getMySignup(slug, nightId), enabled });
 }
+
+export function usePairings(slug: string, nightId: string, enabled = true) {
+  return useQuery({ queryKey: ['pairings', slug, nightId], queryFn: () => apiClient.listPairings(slug, nightId), enabled });
+}
