@@ -154,3 +154,31 @@ describe('DELETE /clubs/:slug/nights/:nightId/signups/:signupId', () => {
     expect(res.status).toBe(403);
   });
 });
+
+function mySignup(token?: string) {
+  return createApp().request('/clubs/red-dice/nights/night-1/my-signup', {
+    headers: { ...(token ? { authorization: `Bearer ${token}` } : {}) },
+  });
+}
+
+describe('GET /clubs/:slug/nights/:nightId/my-signup', () => {
+  it('returns the guest\'s own signup by session email', async () => {
+    const res = await mySignup(await guestToken('ada@example.com'));
+    expect(res.status).toBe(200);
+    expect((await res.json() as any).signup.email).toBe('ada@example.com');
+  });
+
+  it('404s when the guest has no signup on this night', async () => {
+    const res = await mySignup(await guestToken('nobody@example.com'));
+    expect(res.status).toBe(404);
+  });
+
+  it('401s an anonymous caller', async () => {
+    expect((await mySignup()).status).toBe(401);
+  });
+
+  it('401s a guest whose session is for a different club', async () => {
+    const res = await mySignup(await guestToken('ada@example.com', 'club-2'));
+    expect(res.status).toBe(401);
+  });
+});

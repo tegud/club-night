@@ -5,9 +5,9 @@ import { updateSignupSchema } from '@club-night/shared';
 import type { AppEnv } from '../auth/middleware';
 import { requireClubBySlug, requireNight } from './context';
 import { requireSignupAccess } from '../auth/authorize';
-import { NotFoundError, ValidationError, ConflictError } from '../http/errors';
+import { NotFoundError, ValidationError, ConflictError, UnauthorizedError } from '../http/errors';
 import { parseOrThrow } from '../http/validate';
-import { getSignup, putSignup } from '../repositories/signups';
+import { getSignup, putSignup, findSignupByEmail } from '../repositories/signups';
 
 export const signupManagementRoutes = new Hono<AppEnv>();
 
@@ -52,4 +52,16 @@ signupManagementRoutes.delete('/clubs/:slug/nights/:nightId/signups/:signupId', 
   const cancelled: Signup = { ...signup, status: 'CANCELLED' };
   await putSignup(cancelled);
   return c.json({ signup: cancelled });
+});
+
+signupManagementRoutes.get('/clubs/:slug/nights/:nightId/my-signup', async (c) => {
+  const club = await requireClubBySlug(c.req.param('slug'));
+  const principal = c.get('principal');
+  if (!principal || principal.kind !== 'guest' || principal.clubId !== club.clubId) {
+    throw new UnauthorizedError('Guest sign-in required');
+  }
+  const night = await requireNight(club.clubId, c.req.param('nightId'));
+  const signup = await findSignupByEmail(night.nightId, principal.email.toLowerCase());
+  if (!signup) throw new NotFoundError('No signup found for your email on this night');
+  return c.json({ signup });
 });

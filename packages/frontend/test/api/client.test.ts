@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiClient, ApiError } from '../../src/api/client';
-import { setToken } from '../../src/auth/token';
+import { setToken, getToken } from '../../src/auth/token';
 
 const fetchMock = vi.fn();
 
@@ -54,5 +54,58 @@ describe('apiClient', () => {
     const night = await apiClient.getNight('red-dice', 'n1');
     expect(night.nightId).toBe('n1');
     expect(fetchMock.mock.calls[0]![0]).toContain('/clubs/red-dice/nights/n1');
+  });
+
+  it('POSTs a signup and returns the created signup', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ signup: { signupId: 's1', playerName: 'Ada', systemKey: 'WARHAMMER_40K', status: 'CONFIRMED' } }, 201));
+    const signup = await apiClient.createSignup('red-dice', 'n1', { playerName: 'Ada', email: 'ada@example.com', systemKey: 'WARHAMMER_40K' });
+    expect(signup.signupId).toBe('s1');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain('/clubs/red-dice/nights/n1/signups');
+    expect((init as RequestInit).method).toBe('POST');
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ playerName: 'Ada', email: 'ada@example.com', systemKey: 'WARHAMMER_40K' });
+  });
+
+  it('surfaces a 409 (night not open) as an ApiError', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code: 'CONFLICT', message: 'This game night is not open for signups' } }, 409));
+    await expect(
+      apiClient.createSignup('red-dice', 'n1', { playerName: 'Ada', email: 'ada@example.com', systemKey: 'WARHAMMER_40K' }),
+    ).rejects.toMatchObject({ code: 'CONFLICT', status: 409 });
+  });
+
+  it('requestGuestCode POSTs the email', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
+    await apiClient.requestGuestCode('red-dice', 'ada@example.com');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain('/clubs/red-dice/guest/request-code');
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ email: 'ada@example.com' });
+  });
+
+  it('verifyGuestCode stores the returned token', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ token: 'guest-tok' }));
+    await apiClient.verifyGuestCode('red-dice', 'ada@example.com', '123456');
+    expect(getToken()).toBe('guest-tok');
+  });
+
+  it('getMySignup GETs the my-signup endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ signup: { signupId: 's1', email: 'ada@example.com', systemKey: 'WARHAMMER_40K', status: 'CONFIRMED' } }));
+    const s = await apiClient.getMySignup('red-dice', 'n1');
+    expect(s.signupId).toBe('s1');
+    expect(fetchMock.mock.calls[0]![0]).toContain('/clubs/red-dice/nights/n1/my-signup');
+  });
+
+  it('updateSignup sends a PATCH', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ signup: { signupId: 's1', systemKey: 'BLOOD_BOWL', status: 'CONFIRMED' } }));
+    await apiClient.updateSignup('red-dice', 'n1', 's1', { systemKey: 'BLOOD_BOWL' });
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect(init.method).toBe('PATCH');
+  });
+
+  it('withdrawSignup sends a DELETE and returns the cancelled signup', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ signup: { signupId: 's1', status: 'CANCELLED' } }));
+    const cancelled = await apiClient.withdrawSignup('red-dice', 'n1', 's1');
+    expect(cancelled.status).toBe('CANCELLED');
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect(init.method).toBe('DELETE');
   });
 });

@@ -1,7 +1,10 @@
 import type { ReactElement } from 'react';
-import { render, type RenderOptions } from '@testing-library/react';
+import { afterEach } from 'vitest';
+import { render, type RenderOptions, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+afterEach(() => cleanup());
 
 export function renderWithProviders(
   ui: ReactElement,

@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config';
-import { getToken } from '../auth/token';
+import { getToken, setToken } from '../auth/token';
 import type { ClubBranding, NightResponse, NightsResponse, ApiErrorBody } from './types';
+import type { Signup, SignupInput, UpdateSignupInput } from '@club-night/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -44,5 +45,45 @@ export const apiClient = {
   async getNight(slug: string, nightId: string) {
     const res = await request<NightResponse>(`/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}`);
     return res.night;
+  },
+  async createSignup(slug: string, nightId: string, input: SignupInput): Promise<Signup> {
+    const res = await request<{ signup: Signup }>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/signups`,
+      { method: 'POST', body: JSON.stringify(input) },
+    );
+    return res.signup;
+  },
+  async requestGuestCode(slug: string, email: string): Promise<void> {
+    await request<{ ok: boolean }>(`/clubs/${encodeURIComponent(slug)}/guest/request-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+  async verifyGuestCode(slug: string, email: string, code: string): Promise<void> {
+    const res = await request<{ token: string }>(`/clubs/${encodeURIComponent(slug)}/guest/verify-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    });
+    setToken(res.token);
+  },
+  async getMySignup(slug: string, nightId: string): Promise<Signup> {
+    const res = await request<{ signup: Signup }>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/my-signup`,
+    );
+    return res.signup;
+  },
+  async updateSignup(slug: string, nightId: string, signupId: string, input: UpdateSignupInput): Promise<Signup> {
+    const res = await request<{ signup: Signup }>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/signups/${encodeURIComponent(signupId)}`,
+      { method: 'PATCH', body: JSON.stringify(input) },
+    );
+    return res.signup;
+  },
+  async withdrawSignup(slug: string, nightId: string, signupId: string): Promise<Signup> {
+    const res = await request<{ signup: Signup }>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/signups/${encodeURIComponent(signupId)}`,
+      { method: 'DELETE' },
+    );
+    return res.signup;
   },
 };
