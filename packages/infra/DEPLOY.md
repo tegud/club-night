@@ -1,7 +1,9 @@
 # Deploying Club Night
 
-The API + infrastructure deploy via AWS CDK (`packages/infra`). The frontend (slice 5)
-is a static build deployed separately (S3/Netlify) pointed at the API URL.
+The API + infrastructure deploy via AWS CDK (`packages/infra`), which also provisions
+S3 + CloudFront hosting for the static frontend. A push to `main` deploys everything
+automatically via GitHub Actions (`.github/workflows/deploy.yml`); the manual steps below
+are the same flow run by hand.
 
 ## Prerequisites
 
@@ -31,9 +33,40 @@ npx cdk deploy ClubNightStack \
 `NodejsFunction` bundles the API and scheduled-pairing handlers with esbuild (installed
 as a dev dependency — no Docker needed). The deploy prints outputs:
 
-- `ApiUrl` — the Lambda Function URL; configure the frontend to call this.
-- `UserPoolId`, `UserPoolClientId` — for organizer sign-in.
+- `ApiUrl` — the Lambda Function URL; the frontend build is wired to this (`VITE_API_URL`).
+- `UserPoolId`, `UserPoolClientId` — for organizer sign-in (`VITE_COGNITO_*`).
 - `TableName` — the DynamoDB table.
+- `SiteBucketName` — the private S3 bucket the frontend is synced into.
+- `DistributionId` — the CloudFront distribution to invalidate after a sync.
+- `SiteUrl` — the public CloudFront URL the site is served from.
+
+### Frontend (manual)
+
+```bash
+cd packages/frontend
+VITE_API_URL="<ApiUrl>" \
+VITE_COGNITO_USER_POOL_ID="<UserPoolId>" \
+VITE_COGNITO_CLIENT_ID="<UserPoolClientId>" \
+  npm run build
+aws s3 sync dist/ "s3://<SiteBucketName>/" --delete
+aws cloudfront create-invalidation --distribution-id "<DistributionId>" --paths "/*"
+```
+
+## CI/CD: deploy on push to `main`
+
+`.github/workflows/deploy.yml` runs typecheck + the full test suite, then `cdk deploy`,
+then builds the frontend (wired to the stack outputs) and syncs it to S3 + invalidates
+CloudFront. It still requires a **one-time `cdk bootstrap`** (above) in the target account.
+
+Configure these in the repo's **production** GitHub Environment (Settings → Environments):
+
+| Secret | Value |
+| --- | --- |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credentials for a principal that can assume the CDK bootstrap roles and run `s3 sync` + `cloudfront create-invalidation`. |
+| `GUEST_JWT_SECRET` | The ≥32-char guest-session signing secret. **Keep it stable** — changing it invalidates all existing guest sessions. |
+| `EMAIL_FROM` | The verified SES sender address. |
+
+The region is set in the workflow `env` (`eu-west-2`); change it there if you deploy elsewhere.
 
 ## Post-deploy: provision a club + organizer
 
@@ -59,5 +92,6 @@ notify the organizer); the organizer then resolves any odd-one-out and publishes
 npx cdk destroy ClubNightStack
 ```
 
-The DynamoDB table and Cognito user pool use `RETAIN` removal policy, so they survive a
-stack delete (delete them manually if you truly want the data gone).
+The DynamoDB table, Cognito user pool, and the frontend S3 bucket use `RETAIN` removal
+policy, so they survive a stack delete (empty + delete them manually if you truly want
+the data gone — a `RETAIN`ed bucket must be emptied before it can be deleted).

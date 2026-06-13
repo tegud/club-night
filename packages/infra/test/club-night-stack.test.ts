@@ -97,6 +97,40 @@ describe('API URL, scheduler, and wiring', () => {
   });
 });
 
+describe('Frontend hosting', () => {
+  it('creates a single private S3 bucket for the site', () => {
+    const t = synth();
+    t.resourceCountIs('AWS::S3::Bucket', 1);
+    t.hasResourceProperties('AWS::S3::Bucket', {
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+    });
+  });
+
+  it('serves the site via a CloudFront distribution with SPA fallback', () => {
+    const t = synth();
+    t.resourceCountIs('AWS::CloudFront::Distribution', 1);
+    t.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        DefaultRootObject: 'index.html',
+        CustomErrorResponses: Match.arrayWith([
+          Match.objectLike({ ErrorCode: 403, ResponseCode: 200, ResponsePagePath: '/index.html' }),
+          Match.objectLike({ ErrorCode: 404, ResponseCode: 200, ResponsePagePath: '/index.html' }),
+        ]),
+      }),
+    });
+  });
+
+  it('locks the bucket to the distribution via Origin Access Control', () => {
+    const t = synth();
+    t.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
+  });
+});
+
 describe('Lambdas', () => {
   it('creates two Node 20 functions', () => {
     const t = synth();

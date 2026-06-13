@@ -1,0 +1,96 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Never run two deploys at once; let an in-flight deploy finish rather than cancel it.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-west-2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Optional: gate behind a GitHub "production" environment for required reviewers / env secrets.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate the deploy on a green build — these run in-process (dynalite), no AWS needed.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Deploys the API + scheduled Lambdas, DynamoDB, Cognito, EventBridge Scheduler,
+      # and the S3 + CloudFront frontend hosting. Assumes `cdk bootstrap` has already
+      # been run once in this account/region (see packages/infra/DEPLOY.md).
+      - name: Deploy CDK stack
+        working-directory: packages/infra
+        run: |
+          npx cdk deploy ClubNightStack \
+            --require-approval never \
+            --outputs-file cdk-outputs.json \
+            --parameters GuestJwtSecret="${{ secrets.GUEST_JWT_SECRET }}" \
+            --parameters EmailFrom="${{ secrets.EMAIL_FROM }}"
+
+      - name: Read stack outputs
+        id: cdk
+        working-directory: packages/infra
+        run: |
+          jq -r '
+            .ClubNightStack |
+            "api_url=\(.ApiUrl)",
+            "user_pool_id=\(.UserPoolId)",
+            "user_pool_client_id=\(.UserPoolClientId)",
+            "site_bucket=\(.SiteBucketName)",
+            "distribution_id=\(.DistributionId)",
+            "site_url=\(.SiteUrl)"
+          ' cdk-outputs.json >> "$GITHUB_OUTPUT"
+
+      # Vite inlines VITE_* at build time, so the frontend must be built AFTER the stack
+      # exists, wired to its outputs (config.ts strips any trailing slash on the API URL).
+      - name: Build frontend
+        working-directory: packages/frontend
+        env:
+          VITE_API_URL: ${{ steps.cdk.outputs.api_url }}
+          VITE_COGNITO_USER_POOL_ID: ${{ steps.cdk.outputs.user_pool_id }}
+          VITE_COGNITO_CLIENT_ID: ${{ steps.cdk.outputs.user_pool_client_id }}
+        run: npm run build
+
+      - name: Upload frontend to S3
+        working-directory: packages/frontend
+        run: aws s3 sync dist/ "s3://${{ steps.cdk.outputs.site_bucket }}/" --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.cdk.outputs.distribution_id }}" \
+            --paths "/*"
+
+      - name: Summary
+        run: echo "Deployed → ${{ steps.cdk.outputs.site_url }}" >> "$GITHUB_STEP_SUMMARY"

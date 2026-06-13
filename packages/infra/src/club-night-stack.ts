@@ -2,10 +2,13 @@ import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
 import { CfnOutput, CfnParameter, Duration, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import type { Construct } from 'constructs';
 
@@ -15,6 +18,8 @@ export class ClubNightStack extends Stack {
   readonly userPoolClient: cognito.UserPoolClient;
   readonly scheduledFn: NodejsFunction;
   readonly apiFn: NodejsFunction;
+  readonly siteBucket: s3.Bucket;
+  readonly distribution: cloudfront.Distribution;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -131,9 +136,37 @@ export class ClubNightStack extends Stack {
     // authType NONE: the route layer validates Cognito/guest JWTs; the URL must be publicly reachable.
     const fnUrl = apiFn.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE });
 
+    // --- Frontend hosting: private S3 origin behind CloudFront (Origin Access Control) ---
+    const siteBucket = new s3.Bucket(this, 'SiteBucket', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      // RETAIN: keep the bucket on `cdk destroy`; the CI job re-syncs content each deploy.
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+    this.siteBucket = siteBucket;
+
+    const distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
+      defaultRootObject: 'index.html',
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      },
+      // SPA fallback: client-side routes (e.g. /c/<slug>/organize) aren't real S3 keys,
+      // so serve index.html with a 200 instead of S3's 403/404.
+      errorResponses: [
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
+      ],
+    });
+    this.distribution = distribution;
+
     new CfnOutput(this, 'ApiUrl', { value: fnUrl.url });
     new CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
     new CfnOutput(this, 'TableName', { value: table.tableName });
+    new CfnOutput(this, 'SiteBucketName', { value: siteBucket.bucketName });
+    new CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
+    new CfnOutput(this, 'SiteUrl', { value: `https://${distribution.distributionDomainName}` });
   }
 }
