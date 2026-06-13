@@ -108,4 +108,29 @@ describe('apiClient', () => {
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
     expect(init.method).toBe('DELETE');
   });
+
+  it('createNight POSTs and returns the night', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ night: { nightId: 'n1', title: 'Thu', status: 'OPEN' } }, 201));
+    const night = await apiClient.createNight('red-dice', { title: 'Thu', eventDate: '2026-07-02T18:00:00.000Z', signupDeadline: '2026-07-02T12:00:00.000Z', offeredSystems: [{ systemKey: 'WARHAMMER_40K', prominent: true }] });
+    expect(night.nightId).toBe('n1');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toMatch(/\/clubs\/red-dice\/nights$/);
+    expect((init as RequestInit).method).toBe('POST');
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ title: 'Thu', eventDate: '2026-07-02T18:00:00.000Z' });
+  });
+
+  it('updateNight PATCHes the night', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ night: { nightId: 'n1', status: 'CANCELLED' } }));
+    const night = await apiClient.updateNight('red-dice', 'n1', { status: 'CANCELLED' });
+    expect(night.status).toBe('CANCELLED');
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).method).toBe('PATCH');
+    expect(JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string)).toEqual({ status: 'CANCELLED' });
+  });
+
+  it('listNightSignups GETs the night signups', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ signups: [{ signupId: 's1', playerName: 'Ada' }] }));
+    const signups = await apiClient.listNightSignups('red-dice', 'n1');
+    expect(signups).toHaveLength(1);
+    expect(fetchMock.mock.calls[0]![0]).toContain('/clubs/red-dice/nights/n1/signups');
+  });
 });

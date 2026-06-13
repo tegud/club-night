@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config';
 import { getToken, setToken } from '../auth/token';
 import type { ClubBranding, NightResponse, NightsResponse, ApiErrorBody } from './types';
-import type { Signup, SignupInput, UpdateSignupInput } from '@club-night/shared';
+import type { Signup, SignupInput, UpdateSignupInput, CreateNightInput, UpdateNightInput, GameNight } from '@club-night/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -85,5 +85,25 @@ export const apiClient = {
       { method: 'DELETE' },
     );
     return res.signup;
+  },
+  async createNight(slug: string, input: CreateNightInput): Promise<GameNight> {
+    const res = await request<{ night: GameNight }>(`/clubs/${encodeURIComponent(slug)}/nights`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return res.night;
+  },
+  async updateNight(slug: string, nightId: string, input: UpdateNightInput): Promise<GameNight> {
+    const res = await request<{ night: GameNight }>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}`,
+      { method: 'PATCH', body: JSON.stringify(input) },
+    );
+    return res.night;
+  },
+  async listNightSignups(slug: string, nightId: string): Promise<Signup[]> {
+    const res = await request<{ signups: Signup[] }>(
+      `/clubs/${encodeURIComponent(slug)}/nights/${encodeURIComponent(nightId)}/signups`,
+    );
+    return res.signups;
   },
 };
