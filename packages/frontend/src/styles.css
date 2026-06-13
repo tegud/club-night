@@ -1,0 +1,21 @@
+:root {
+  --club-accent: #444444;
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --border: #e5e7eb;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+}
+a { color: var(--club-accent); }
+.container { max-width: 720px; margin: 0 auto; padding: 1.5rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+.accent-bar { height: 4px; background: var(--club-accent); }
+.muted { color: var(--muted); }

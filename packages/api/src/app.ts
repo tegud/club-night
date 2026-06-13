@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { onError } from './http/error-handler';
 import { authMiddleware, type AppEnv } from './auth/middleware';
 import { clubRoutes } from './routes/clubs';
@@ -13,6 +14,15 @@ export function createApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.onError(onError);
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
+
+  app.use(
+    '*',
+    cors({
+      origin: '*',
+      allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    }),
+  );
 
   app.use('*', authMiddleware);
 
