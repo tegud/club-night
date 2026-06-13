@@ -9,6 +9,7 @@ import { parseOrThrow } from '../http/validate';
 import { ValidationError } from '../http/errors';
 import { putNight } from '../repositories/nights';
 import { listSignupsByNight } from '../repositories/signups';
+import { getScheduler } from '../scheduling/provider';
 
 function assertSystemsEnabled(club: Club, offeredSystems: { systemKey: GameSystemKey }[]): void {
   for (const offered of offeredSystems) {
@@ -40,6 +41,12 @@ organizerNightRoutes.post('/clubs/:slug/nights', async (c) => {
     createdBy: membership.userId,
   };
   await putNight(night);
+  try {
+    await getScheduler().createNightSchedule(club.clubId, night.nightId, night.signupDeadline);
+  } catch (err) {
+    // Best-effort: a scheduler failure must not fail night creation (organizers can pair manually).
+    console.error('Failed to create night schedule', err);
+  }
   return c.json({ night }, 201);
 });
 
@@ -53,6 +60,21 @@ organizerNightRoutes.patch('/clubs/:slug/nights/:nightId', async (c) => {
 
   const updated: GameNight = { ...night, ...input };
   await putNight(updated);
+  if (updated.status === 'CANCELLED') {
+    try {
+      await getScheduler().deleteNightSchedule(club.clubId, updated.nightId);
+    } catch (err) {
+      console.error('Failed to delete night schedule', err);
+    }
+  } else if (input.signupDeadline && updated.status === 'OPEN') {
+    // Deadline moved — replace the one-shot schedule so auto-pair fires at the new time.
+    try {
+      await getScheduler().deleteNightSchedule(club.clubId, updated.nightId);
+      await getScheduler().createNightSchedule(club.clubId, updated.nightId, updated.signupDeadline);
+    } catch (err) {
+      console.error('Failed to reschedule night', err);
+    }
+  }
   return c.json({ night: updated });
 });
 

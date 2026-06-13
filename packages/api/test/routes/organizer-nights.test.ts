@@ -7,8 +7,12 @@ import { listNightsByClub, getNight, putNight } from '../../src/repositories/nig
 import { setCognitoVerifier } from '../../src/auth/cognito';
 import { upsertSignup } from '../../src/repositories/signups';
 import { createApp } from '../../src/app';
+import { setScheduler } from '../../src/scheduling/provider';
+import { FakeScheduler } from '../fakes/scheduler';
 
 const ORGANIZER_TOKEN = 'organizer-token';
+
+let scheduler: FakeScheduler;
 
 beforeEach(async () => {
   await resetTable();
@@ -20,10 +24,13 @@ beforeEach(async () => {
       return { sub: 'user-1', email: 'olivia@example.com' };
     },
   });
+  scheduler = new FakeScheduler();
+  setScheduler(scheduler);
 });
 
 afterEach(() => {
   setCognitoVerifier(undefined);
+  setScheduler(undefined);
 });
 
 const validBody = {
@@ -106,6 +113,7 @@ describe('PATCH /clubs/:slug/nights/:nightId (organizer)', () => {
     expect(res.status).toBe(200);
     expect(((await res.json()) as any).night.title).toBe('Renamed Night');
     expect((await getNight('club-1', 'night-1'))!.title).toBe('Renamed Night');
+    expect(scheduler.deleted).toHaveLength(0);
   });
 
   it('cancels a night via a status change', async () => {
@@ -175,5 +183,57 @@ describe('GET /clubs/:slug/nights/:nightId/signups (organizer)', () => {
   it('404s for an unknown night', async () => {
     const res = await listSignups('missing', ORGANIZER_TOKEN);
     expect(res.status).toBe(404);
+  });
+});
+
+describe('night scheduling', () => {
+  it('creates an EventBridge schedule when a night is created', async () => {
+    const res = await createNight(validBody, ORGANIZER_TOKEN);
+    expect(res.status).toBe(201);
+    const nightId = (await res.json() as any).night.nightId;
+    expect(scheduler.created).toHaveLength(1);
+    expect(scheduler.created[0]).toMatchObject({ clubId: 'club-1', nightId, runAtIso: validBody.signupDeadline });
+  });
+
+  it('deletes the schedule when a night is cancelled', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'OPEN' }));
+    const res = await updateNight('night-1', { status: 'CANCELLED' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(200);
+    expect(scheduler.deleted).toContainEqual({ clubId: 'club-1', nightId: 'night-1' });
+  });
+
+  it('still creates the night (201) when scheduling fails', async () => {
+    setScheduler({
+      createNightSchedule: async () => { throw new Error('scheduler down'); },
+      deleteNightSchedule: async () => {},
+    });
+    const res = await createNight(validBody, ORGANIZER_TOKEN);
+    expect(res.status).toBe(201);
+  });
+
+  it('still cancels the night (200) when scheduling fails', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'OPEN' }));
+    setScheduler({
+      createNightSchedule: async () => {},
+      deleteNightSchedule: async () => { throw new Error('scheduler down'); },
+    });
+    const res = await updateNight('night-1', { status: 'CANCELLED' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(200);
+  });
+
+  it('does not reschedule a deadline change on a non-OPEN night', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'CLOSED' }));
+    const res = await updateNight('night-1', { signupDeadline: '2026-08-01T12:00:00.000Z' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(200);
+    expect(scheduler.created).toHaveLength(0);
+    expect(scheduler.deleted).toHaveLength(0);
+  });
+
+  it('reschedules when the signupDeadline changes', async () => {
+    await putNight(sampleNight({ nightId: 'night-1', status: 'OPEN' }));
+    const res = await updateNight('night-1', { signupDeadline: '2026-08-01T12:00:00.000Z' }, ORGANIZER_TOKEN);
+    expect(res.status).toBe(200);
+    expect(scheduler.deleted).toContainEqual({ clubId: 'club-1', nightId: 'night-1' });
+    expect(scheduler.created.some((c) => c.nightId === 'night-1' && c.runAtIso === '2026-08-01T12:00:00.000Z')).toBe(true);
   });
 });
