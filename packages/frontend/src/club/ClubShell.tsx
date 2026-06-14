@@ -20,7 +20,9 @@ export function ClubShell() {
       <div className="accent-bar" />
       <div className="container">
         <header style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <img src={club.logoUrl} alt={club.name} style={{ height: 48, width: 48, objectFit: 'contain' }} />
+          {club.logoUrl && (
+            <img src={club.logoUrl} alt={club.name} style={{ height: 48, width: 48, objectFit: 'contain' }} />
+          )}
           <h1 style={{ margin: 0, fontSize: '1.4rem' }}>{club.name}</h1>
         </header>
         <Outlet context={{ slug }} />

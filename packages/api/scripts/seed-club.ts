@@ -6,7 +6,7 @@
  *     --name "Northern Warlords" \
  *     --slug northern-warlords \
  *     --colour "#1f3a5f" \
- *     --logo "https://example.com/northern-warlords.png" \
+ *     --logo "/club-logos/northern-warlords.png" \
  *     --systems WARHAMMER_40K,AGE_OF_SIGMAR,BLOOD_BOWL,HORUS_HERESY \
  *     [--id <existing-clubId>]
  *
