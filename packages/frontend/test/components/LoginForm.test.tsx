@@ -12,7 +12,7 @@ beforeEach(() => { vi.restoreAllMocks(); setToken(null); });
 
 describe('LoginForm', () => {
   it('signs in, stores the ID token, and calls onLoggedIn', async () => {
-    vi.spyOn(cognitoAuth, 'signIn').mockResolvedValue('id-token-123');
+    vi.spyOn(cognitoAuth, 'signIn').mockResolvedValue({ challenge: 'NONE', idToken: 'id-token-123' });
     const onLoggedIn = vi.fn();
     renderWithProviders(<LoginForm onLoggedIn={onLoggedIn} />);
     await userEvent.type(screen.getByLabelText(/email/i), 'olivia@example.com');
@@ -21,6 +21,27 @@ describe('LoginForm', () => {
     await waitFor(() => expect(onLoggedIn).toHaveBeenCalled());
     expect(cognitoAuth.signIn).toHaveBeenCalledWith('olivia@example.com', 'hunter2!');
     expect(getToken()).toBe('id-token-123');
+  });
+
+  it('prompts for a new password on the FORCE_CHANGE_PASSWORD challenge, then signs in', async () => {
+    const completeNewPassword = vi.fn().mockResolvedValue('id-token-after-reset');
+    vi.spyOn(cognitoAuth, 'signIn').mockResolvedValue({ challenge: 'NEW_PASSWORD_REQUIRED', completeNewPassword });
+    const onLoggedIn = vi.fn();
+    renderWithProviders(<LoginForm onLoggedIn={onLoggedIn} />);
+    await userEvent.type(screen.getByLabelText(/email/i), 'olivia@example.com');
+    await userEvent.type(screen.getByLabelText(/^password/i), 'Temp-Pass-1!');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    // The form switches to the new-password step.
+    await waitFor(() => expect(screen.getByLabelText(/new password/i)).toBeInTheDocument());
+    expect(onLoggedIn).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText(/new password/i), 'Brand-New-Pass-9!');
+    await userEvent.click(screen.getByRole('button', { name: /set password/i }));
+
+    await waitFor(() => expect(onLoggedIn).toHaveBeenCalled());
+    expect(completeNewPassword).toHaveBeenCalledWith('Brand-New-Pass-9!');
+    expect(getToken()).toBe('id-token-after-reset');
   });
 
   it('shows an error when sign-in fails', async () => {

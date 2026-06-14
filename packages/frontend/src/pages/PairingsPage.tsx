@@ -112,7 +112,7 @@ export function PairingsPage() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>{night?.title ?? 'Pairings'}</h2>
         <span style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to={`/c/${slug}/organize`}>← Back</Link>
+          <Link to={`/${slug}/organize`}>← Back</Link>
           <button
             type="button"
             className="muted"

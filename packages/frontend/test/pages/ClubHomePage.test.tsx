@@ -23,11 +23,11 @@ beforeEach(() => {
 function renderHome() {
   return renderWithProviders(
     <Routes>
-      <Route path="/c/:slug" element={<ClubShell />}>
+      <Route path="/:slug" element={<ClubShell />}>
         <Route index element={<ClubHomePage />} />
       </Route>
     </Routes>,
-    { route: '/c/red-dice' },
+    { route: '/red-dice' },
   );
 }
 

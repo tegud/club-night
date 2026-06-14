@@ -16,9 +16,9 @@ beforeEach(() => { vi.restoreAllMocks(); setToken(null); });
 function renderPage() {
   return renderWithProviders(
     <Routes>
-      <Route path="/c/:slug/organize" element={<OrganizerPage />} />
+      <Route path="/:slug/organize" element={<OrganizerPage />} />
     </Routes>,
-    { route: '/c/red-dice/organize' },
+    { route: '/red-dice/organize' },
   );
 }
 
@@ -32,7 +32,7 @@ describe('OrganizerPage', () => {
   });
 
   it('shows the organizer area after signing in', async () => {
-    vi.spyOn(cognitoAuth, 'signIn').mockResolvedValue('id-token-123');
+    vi.spyOn(cognitoAuth, 'signIn').mockResolvedValue({ challenge: 'NONE', idToken: 'id-token-123' });
     vi.spyOn(apiClient, 'getClub').mockResolvedValue(club);
     vi.spyOn(apiClient, 'listNights').mockResolvedValue([night]);
     renderPage();

@@ -19,9 +19,9 @@ beforeEach(() => vi.restoreAllMocks());
 function renderPage() {
   return renderWithProviders(
     <Routes>
-      <Route path="/c/:slug/nights/:nightId" element={<NightDetailPage />} />
+      <Route path="/:slug/nights/:nightId" element={<NightDetailPage />} />
     </Routes>,
-    { route: '/c/red-dice/nights/n1' },
+    { route: '/red-dice/nights/n1' },
   );
 }
 

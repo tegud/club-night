@@ -22,7 +22,7 @@ export function NightDetailPage() {
         <p className="muted">Signups for this night are closed.</p>
       )}
       <p className="muted" style={{ marginTop: '1rem' }}>
-        Already signed up? <Link to={`/c/${slug}/nights/${nightId}/manage`}>Manage your signup</Link>
+        Already signed up? <Link to={`/${slug}/nights/${nightId}/manage`}>Manage your signup</Link>
       </p>
     </section>
   );

@@ -9,7 +9,7 @@ import { PairingsPage } from './pages/PairingsPage';
 export function App() {
   return (
     <Routes>
-      <Route path="/c/:slug" element={<ClubShell />}>
+      <Route path="/:slug" element={<ClubShell />}>
         <Route index element={<ClubHomePage />} />
         <Route path="nights/:nightId" element={<NightDetailPage />} />
         <Route path="nights/:nightId/manage" element={<ManageSignupPage />} />

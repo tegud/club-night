@@ -15,7 +15,7 @@ export function ClubHomePage() {
       <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.75rem' }}>
         {nights.map((night) => (
           <li key={night.nightId} className="card">
-            <Link to={`/c/${slug}/nights/${night.nightId}`} style={{ fontWeight: 600 }}>
+            <Link to={`/${slug}/nights/${night.nightId}`} style={{ fontWeight: 600 }}>
               {night.title}
             </Link>
             <div className="muted">{new Date(night.eventDate).toLocaleString()}</div>

@@ -18,9 +18,9 @@ beforeEach(() => {
 function renderPage() {
   return renderWithProviders(
     <Routes>
-      <Route path="/c/:slug/nights/:nightId/organize" element={<PairingsPage />} />
+      <Route path="/:slug/nights/:nightId/organize" element={<PairingsPage />} />
     </Routes>,
-    { route: '/c/red-dice/nights/n1/organize' },
+    { route: '/red-dice/nights/n1/organize' },
   );
 }
 

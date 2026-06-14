@@ -64,7 +64,7 @@ export function OrganizerPage() {
               <strong>{night.title}</strong> <span className="muted">· {night.status}</span>
             </span>
             <span style={{ display: 'flex', gap: '0.75rem' }}>
-              <Link to={`/c/${slug}/nights/${night.nightId}/organize`}>Pairings</Link>
+              <Link to={`/${slug}/nights/${night.nightId}/organize`}>Pairings</Link>
               <button
                 type="button"
                 onClick={() => cancelMutation.mutate(night.nightId)}

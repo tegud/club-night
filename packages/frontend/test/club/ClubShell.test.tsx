@@ -16,11 +16,11 @@ describe('ClubShell', () => {
     vi.spyOn(apiClient, 'getClub').mockResolvedValue(club);
     renderWithProviders(
       <Routes>
-        <Route path="/c/:slug" element={<ClubShell />}>
+        <Route path="/:slug" element={<ClubShell />}>
           <Route index element={<p>inner</p>} />
         </Route>
       </Routes>,
-      { route: '/c/red-dice' },
+      { route: '/red-dice' },
     );
     await waitFor(() => expect(screen.getByText('Red Dice Club')).toBeInTheDocument());
     expect(screen.getByRole('img', { name: /red dice club/i })).toHaveAttribute('src', 'https://x/logo.png');
@@ -33,9 +33,9 @@ describe('ClubShell', () => {
     vi.spyOn(apiClient, 'getClub').mockRejectedValue(new ApiError(404, 'NOT_FOUND', 'Club not found'));
     renderWithProviders(
       <Routes>
-        <Route path="/c/:slug" element={<ClubShell />} />
+        <Route path="/:slug" element={<ClubShell />} />
       </Routes>,
-      { route: '/c/missing' },
+      { route: '/missing' },
     );
     await waitFor(() => expect(screen.getByText(/club not found/i)).toBeInTheDocument());
   });

@@ -13,16 +13,16 @@ const club = { clubId: 'c1', slug: 'red-dice', name: 'Red Dice Club', logoUrl: '
 beforeEach(() => vi.restoreAllMocks());
 
 describe('App routing', () => {
-  it('renders the club home page at /c/:slug', async () => {
+  it('renders the club home page at /:slug', async () => {
     vi.spyOn(apiClient, 'getClub').mockResolvedValue(club);
     vi.spyOn(apiClient, 'listNights').mockResolvedValue([]);
     renderWithProviders(
       <Routes>
-        <Route path="/c/:slug" element={<ClubShell />}>
+        <Route path="/:slug" element={<ClubShell />}>
           <Route index element={<ClubHomePage />} />
         </Route>
       </Routes>,
-      { route: '/c/red-dice' },
+      { route: '/red-dice' },
     );
     await waitFor(() => expect(screen.getByText(/no upcoming game nights/i)).toBeInTheDocument());
   });
